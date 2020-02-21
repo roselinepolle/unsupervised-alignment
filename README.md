@@ -1,7 +1,7 @@
 # Unsupervised Alignment
 
-PI: Prof. Bradley C. Love
-Project Lead: Dr. Brett D. Roads
+#### PI: Prof. Bradley C. Love
+#### Project Lead: Dr. Brett D. Roads
 
 ## Team Members
 * Kaarina Aho
