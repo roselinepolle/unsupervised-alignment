@@ -27,7 +27,6 @@ Explore and develop algorithms that perform unsupervised alignment.
 ### Cognitive Motivation
 * Casillas, M., Brown, P., & Levinson, S.C. (2019) Early Language Experience in a Tseltal Mayan Village. *Child Development*. doi: 10.1111/cdev.13349
 * Cwyn Solvi, C., Al-Khudhairy, S.G., & Chittka, L. (2020). Bumble bees display cross-modal object recognition between visual and tactile senses. *Science* 367, 910–912.
-* 
 
 ### CogSci Algorithms
 * Engle, J., Feng, Y., & Goldstone, R. (2012). Mining Relatedness Graphs for Data Integration. *Proceedings of the Annual Meeting of the Cognitive Science Society* 34(34), 1524-1529.
