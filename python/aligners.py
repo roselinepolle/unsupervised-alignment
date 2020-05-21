@@ -460,3 +460,90 @@ def distribution_loss(fx, gmm_y_samples, gmm_y_log_prob, gmm_scale):
         gmm_fx.log_prob(gmm_y_samples), axis=0
     )
     return loss_kl
+
+
+def loglik(dist, sample):
+    """
+    Calculates loglikelihood of drawing a sample from a probability
+    distribution
+
+    Args:
+     - dist: probability distribution (e.g, output of create_gmm)
+    """
+
+    result = tf.math.reduce_mean(dist.log_prob(sample), axis = 1)
+    return result
+
+class Encoder(Model):
+    """ Encoder class to shared latent space"""
+    def __init__(self, hidden, n_dim_encode):
+        super(Encoder, self).__init__()
+        self.d1 = Dense(hidden, activation='tanh')
+        self.d2 = Dense(hidden, activation='tanh')
+        self.d3 = Dense(hidden, activation='tanh')
+        self.d4 = Dense(n_dim_encode, activation='linear')
+
+
+    def call(self, x):
+        """Feed-forward pass."""
+        h1 = self.d1(x)
+        h2 = self.d2(h1)
+        h3 = self.d3(h2)
+        y = self.d4(h3)
+        return y
+
+
+class Decoder(Model):
+    """ Decoder block from shared latent space"""
+    def __init__(self, hidden, n_dim_out):
+        super(Decoder, self).__init__()
+        self.d1 = Dense(hidden, activation='tanh')
+        self.d2 = Dense(hidden, activation='tanh')
+        self.d3 = Dense(hidden, activation='tanh')
+        self.d4 = Dense(n_dim_out, activation='linear')
+        
+    def call(self, x):
+        x = self.d1(x)
+        x = self.d2(x)
+        x = self.d3(x)
+        x = self.d4(x)
+        return x
+
+
+def flex_cycle_loss(X=0, Y=0, gf_x=0, fg_y=0, one_system=False):
+    """
+    Calculates cycle consistency loss for a system and its mapping back
+    to itself through the model. Either for two systems simultaneously 
+    or for one at a time to allow for performance tracking by model component.
+
+    Args:
+     - X: Original system, tensor
+     - gf_x: Resulting system for comparison to original. Tensor with 
+     same shape as X
+     - Y and gf_y: Second system. Only needed if one_system = False
+     - one_system: True when calculating in one direction only (X -> Y -> X); 
+       False when calculating both directions (X -> Y -> X and Y -> X -> Y)
+
+    Output:
+     - tot_loss: cycle loss per concept
+    """
+
+    if one_system == True:
+        x_diff = tf.math.subtract(gf_x, X)
+        tot_loss = tf.reduce_mean(tf.abs(x_diff))
+
+    elif one_system == False:
+        x_diff = tf.math.subtract(gf_x, X)
+        y_diff = tf.math.subtract(fg_y, Y)
+
+        # Mean across X of the l1 norm of g(f(x)) - x)
+        x_consistency = tf.reduce_mean(tf.abs(x_diff))
+
+        # Mean across Y of the l1 norm of f(g(y)) - y)
+        y_consistency = tf.reduce_mean(tf.abs(y_diff))
+
+        # cycle consistency loss is the sum of the two
+        tot_loss = x_consistency + y_consistency
+
+    return tot_loss
+
