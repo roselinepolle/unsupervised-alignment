@@ -36,6 +36,7 @@ tfd = tfp.distributions
 
 import utils
 
+
 def bdr_0_0_1(x, y, y_idx_map=None):
     """Align using an algorithm loosely inspired by CycleGan.
 
