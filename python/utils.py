@@ -164,6 +164,20 @@ def mapping_accuracy(f_x, y):
     return acc_1, acc_5, acc_10, acc_half
 
 
+def calculate_ceiling(z_1p, z_1):
+
+    """Calculate proportion of correct mappings"""
+    z_1p = tf.squeeze(z_1p)
+    z_1 = tf.squeeze(z_1)
+    n_concept = z_1.shape[0]
+    correct = range(n_concept)
+
+    map_idx = assign_neighbor(z_1p, z_1)
+    compare = np.sum(map_idx == correct)
+    
+    return compare/n_concept
+
+
 def load_hierarchical_embeddings():
     """Load."""
     # Settings.
