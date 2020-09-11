@@ -16,14 +16,18 @@
 
 """Module of common utilities."""
 
-from pathlib import Path
 import os
-
+import shutil
+from os.path import isfile, join
+from pathlib import Path
+import pandas as pd
 import numpy as np
 import pickle
 from sklearn.manifold import TSNE, Isomap, LocallyLinearEmbedding
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import NearestNeighbors
+import matplotlib.pyplot as plt
+import tensorflow as tf
 
 
 DATA_WORD = 'glove.840b'
@@ -31,6 +35,189 @@ DATA_IMAGE = 'openimage.box'
 DATA_AUDIO = 'audioset'
 DATA_PIXEL = 'imagenet'
 
+####=======================================================
+#####=====================RP===============================
+####=======================================================
+def set_seed_np_tf(sd = None, upper_seed = 10000):
+    if sd == None:
+        sd_to_use = np.random.randint(0,upper_seed)
+    else:
+        sd_to_use = sd
+    tf.random.set_seed(sd_to_use)
+    np.random.seed(sd_to_use)
+    return sd_to_use
+    
+def shuffle_system(X):
+    #To get correct mapping map: do np.argsort(X_shuff_idx)
+    n_concepts = X.shape[-2]
+    X_shuff_idx = np.random.permutation(n_concepts)
+    X_idx_map = np.argsort(X_shuff_idx)
+    X_shuff = X[X_shuff_idx,:] 
+    #=tf version
+    #X_shuff_idx = tf.random.shuffle(list(range(n_concepts)))
+    #X_shuff = tf.expand_dims(tf.gather(tf.squeeze(X), X_shuff_idx), axis=0)
+    return X_shuff,X_shuff_idx,X_idx_map
+def get_batch(inputX, inputY, batch_size):
+    duration = inputX.shape[-2]
+    for i in range(0,duration//batch_size):
+        idx = i*batch_size
+        yield inputX[idx:idx+batch_size], inputY[idx:idx+batch_size]
+def plot_systems_results(x,y,f_x,g_y,x_0,x_1):
+    
+    n_dim = x.shape[-1]
+    
+    
+    if n_dim ==2:
+        fig, (ax1,ax2,ax3,ax4) = plt.subplots(1,4)
+        #Before
+        ax1.set_title('Before')
+        ax1.scatter(x[:,0],x[:,1])
+        ax1.scatter(y[:,0],y[:,1])
+        #After x
+        ax2.set_title('After x : gy')
+        ax2.scatter(x[:,0],x[:,1])
+        ax2.scatter(g_y[:,0],g_y[:,1])
+        #After y
+        ax3.set_title('After y : fx')
+        ax3.scatter(y[:,0],y[:,1])
+        ax3.scatter(f_x[:,0],f_x[:,1])
+        #Noisy X
+        ax4.set_title('Data')
+        ax4.scatter(x_0[:,0],x_0[:,1])
+        ax4.scatter(x_1[:,0],x_1[:,1])
+        #Show
+        plt.show()
+    elif n_dim ==3:
+        fig = plt.figure(figsize=(15., 5.))
+        #Before
+        ax1 = fig.add_subplot(1, 4, 1, projection='3d')
+        ax1.set_title('Before')
+        ax1.scatter(x[:,0],x[:,1],x[:,2])
+        ax1.scatter(y[:,0],y[:,1],y[:,2])
+        #After x
+        ax2 = fig.add_subplot(1, 4, 2, projection='3d')
+        ax2.set_title('After x : gy')
+        ax2.scatter(x[:,0],x[:,1],x[:,2])
+        ax2.scatter(g_y[:,0],g_y[:,1],g_y[:,2])
+        #After y
+        ax3 = fig.add_subplot(1, 4, 3, projection='3d')
+        ax3.set_title('After y : fx')
+        ax3.scatter(y[:,0],y[:,1],y[:,2])
+        ax3.scatter(f_x[:,0],f_x[:,1],f_x[:,2])
+        #Noisy X
+        ax4 = fig.add_subplot(1, 4, 4, projection='3d')
+        ax4.set_title('Data')
+        ax4.scatter(x_0[:,0],x_0[:,1],x_0[:,2])
+        ax4.scatter(x_1[:,0],x_1[:,1],x_1[:,2])
+        #Show
+        plt.show()
+        
+
+def flatten_list_of_list(list_of_list):
+    flat_list = [item for sublist in list_of_list for item in sublist]
+    return flat_list
+####=======================================================
+#####=====================FETCH RESULTS====================
+####=======================================================
+def get_acc_from_dict(dict_entry):
+    acc_f1, acc_f5, acc_f10, acc_fhalf = dict_entry['acc_f1'],dict_entry['acc_f5'],dict_entry['acc_f10'],dict_entry['acc_fhalf']
+    acc_g1, acc_g5, acc_g10, acc_ghalf = dict_entry['acc_g1'],dict_entry['acc_g5'],dict_entry['acc_g10'],dict_entry['acc_ghalf']
+    return acc_f1, acc_f5, acc_f10, acc_fhalf,acc_g1, acc_g5, acc_g10, acc_ghalf
+def get_losses_from_dict(dict_entry):
+    loss_total, cycle_loss, dist_loss_f, dist_loss_g = dict_entry['loss_total'],dict_entry['cycle_loss'],dict_entry['dist_loss_f'],dict_entry['dist_loss_g']
+    return loss_total, cycle_loss, dist_loss_f, dist_loss_g    
+
+def plot_df_columns(axes,df,column_names):
+    #Plot the columns on axes
+    for i in range(len(axes)):
+        axes[i].set_title(column_names[i])
+        axes[i].plot(list(df[column_names[i]]))
+
+def get_df(df,exp=None,run=None,restart=None,epoch=None,new_f = None,new_g = None):
+    #Filter the input df to get a sub-df
+    df2 = df
+    if not exp == None:
+        df2 = df2[(df2['experiment_name']==exp)]
+    if not run == None:
+        df2 = df2[(df2['run']==run)]
+    if not restart == None:
+        df2 = df2[(df2['restart']==restart)]
+    if not epoch == None:
+        df2 = df2[(df2['epoch']==epoch)]
+    if not new_f == None:
+        df2 = df2[(df2['new_f']==new_f)]
+    if not new_g == None:
+        df2 = df2[(df2['new_g']==new_g)]
+    return df2
+def sns_cat_data_to_df(categories,data_list,cat_name='cat',val_name = 'values'):
+    #Put data in df for seaborn use
+    dict_list = []
+    for c in range(len(categories)):
+        data = data_list[c]
+        for i in range(len(data)):
+            dict_list.append({cat_name:categories[c],val_name:data[i]})
+    df = pd.DataFrame(dict_list)
+    return df      
+    
+    
+
+####=======================================================
+#####=====================PATHS/SAVE=======================
+####=======================================================
+def save_models(model_f,model_g,fp):
+    create_folder(fp+ '/model_f')
+    create_folder(fp+ '/model_g')
+    model_f.save_weights(fp+ '/model_f/model_f')
+    model_g.save_weights(fp+ '/model_g/model_g')
+    
+def create_save_folder(fp_save,override,
+                       n_systems,n_concepts,noise,emb_dim,n_epicentres,linearsep,max_restart,max_epoch,batch_size,
+                       name = None):
+    if name == None:
+        template_save = 'DATA_nsys{0}ncon{1}noise{2:.3f}emb_dim{3}nepi{4}linearsep{5}_NN_mrest{6}mepo{7}bsz{8}'
+        save_folder = template_save.format(n_systems,n_concepts,noise,emb_dim,n_epicentres,linearsep,max_restart,max_epoch,batch_size)
+    else:
+        save_folder = name
+    fp_save_runs = str(fp_save / Path(save_folder))
+    i = 0
+    if create_folder(fp_save_runs,override)==False and saved_folder_virgin(fp_save_runs)==False:
+        while create_folder(fp_save_runs+ '_' + str(i))==False and saved_folder_virgin(fp_save_runs+ '_' + str(i))==False:
+            i +=1
+        fp_save_runs = fp_save_runs + '_' + str(i)
+    fp_save_models = fp_save_runs +'/models'
+    create_folder(fp_save_runs +'/models')
+    return fp_save_runs,fp_save_models
+def create_folder(folder_path,override = False):
+    created = False
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+        created = True
+    elif override:
+        shutil.rmtree(folder_path)
+        os.makedirs(folder_path)
+        created = True
+    return created
+def saved_folder_virgin(folder_path):
+    #only empty 'models' dir allowed
+    is_virgin = False
+    if folder_is_empty(folder_path):
+        is_virgin = True
+    elif [f for f in os.listdir(folder_path) if not f.startswith('.')]==['models','dict_params.pickle']:
+        if folder_is_empty(folder_path/Path('models')):
+            is_virgin = True
+    return is_virgin
+def folder_is_empty(folder_path):
+    if [f for f in os.listdir(folder_path) if not f.startswith('.')] == []:
+        is_empty = True
+    else: 
+        is_empty = False
+    return is_empty  
+
+
+
+####========================================================
+#####=====================BEFORE============================
+####========================================================
 
 def load_synthetic_embeddings_1_0(noise=.1, n_dim=2, n_concept=200, seed=7849):
     """Load synthetic embeddings."""
