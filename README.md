@@ -2,9 +2,9 @@
 
 This code is from my Machine Learning Msc thesis at UCL (Year 2019/2020). It is part of a wider effort within the Love lab at UCL to align conceptual systems from different modalities in an unsupervised way.
 
-#### PI: Prof. Bradley C. Love
-#### Project Lead: Dr. Brett D. Roads
-#### Msc Candidate: Roseline Polle
+PI: Prof. Bradley C. Love
+Project Lead: Dr. Brett D. Roads
+Msc Candidate: Roseline Polle
 
 
 ## Research Objective
